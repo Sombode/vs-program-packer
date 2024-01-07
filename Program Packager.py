@@ -7,65 +7,68 @@ import sys
 import os
 import shutil
 
+verbose = False
+count = 0
+
 # Retrieve CLI arguments
 # TODO: Add fallback functionality if none are provided -> do current folder/open gui??
 basePath = r"" + sys.argv[1]
-defaultDestinationPath = r"" + basePath + "\Packaged Files"
-os.makedirs(defaultDestinationPath, exist_ok=True)
+baseDestPath = r"" + basePath + "\Packaged Files"
 
 def checkSubdir(folder):
-    global defaultDestinationPath
-    destinationPath = defaultDestinationPath
+    global basePath, baseDestPath, count
+
     # Get the immediate subdirectories
-    subdirectories = [d for d in os.listdir(folder) if os.path.isdir(os.path.join(folder, d))]
+    subdirs = [d for d in os.listdir(folder) if os.path.isdir(os.path.join(folder, d))]
 
     # Iterate through each subdirectory
-    for subdirectory in subdirectories:
-        files = os.listdir(os.path.join(folder, subdirectory))
+    for subdir in subdirs:
+        # Avoid checking the destination folder for programs
+        if subdir == "Packaged Files": continue
+        subdirPath = os.path.join(folder, subdir)
+        files = os.listdir(subdirPath)
         targetFiles = []
         # Identify the number of .cpp files in the folder (if there are any)
         for file in files:
             if file.endswith(".cpp"):
                 targetFiles.append(file)
-                print(f"{file} found in '{os.path.join(folder, subdirectory)}'")
-        print(f"Found {len(files)} files ({len(targetFiles)} C++) in '{os.path.join(folder, subdirectory)}'")
+                if verbose: print(f"{file} found in '{subdirPath}'")
+        if verbose: print(f"Found {len(files)} files ({len(targetFiles)} .cpp) in '{subdirPath}'")
         
         if len(targetFiles) == 0:
             # If there are no .cpp files, check further subdirectories
-            checkSubdir(os.path.join(folder, subdirectory))
+            checkSubdir(subdirPath)
         elif len(targetFiles) == 1:
+            # Create any needed subdirectories in the destination path
+            destPath = os.path.join(baseDestPath, folder.replace(basePath, "")[1:])
+            os.makedirs(destPath, exist_ok=True)
+
             # If there's only one .cpp file, no folder will be made and it will simply be renamed to its parent project
-            destinationPath = os.path.join(defaultDestinationPath, folder.replace(basePath, "")[1:])
-            os.makedirs(destinationPath, exist_ok=True)
             # [1:] is needed to remove the leading \ of the folder file path
-            destinationFilePath = os.path.join(basePath, "Packaged Files", folder.replace(basePath, "")[1:], f"{subdirectory}.cpp")
-            shutil.copy2(os.path.join(folder, subdirectory, targetFiles[0]), destinationFilePath)
-            print(f"Copied single-file project to {destinationFilePath}")
+            destFile = os.path.join(destPath, f"{subdir}.cpp")
+            shutil.copy2(os.path.join(subdirPath, targetFiles[0]), destFile)
+            count += 1
+            if verbose: print(f"Copied single-file project to '{destFile}'")
         else:
-            destinationPath = os.path.join(defaultDestinationPath, folder.replace(basePath, "")[1:], subdirectory)
-            os.makedirs(destinationPath, exist_ok=True)
-            print(f"Instantiated folder for multi-file project {subdirectory} to destination {destinationPath}")
+            destPath = os.path.join(baseDestPath, folder.replace(basePath, "")[1:], subdir)
+            os.makedirs(destPath, exist_ok=True)
+            if verbose: print(f"Created folder for multi-file project {subdir} to '{destPath}'")
 
             for file in targetFiles:
-                destinationFilePath = os.path.join(destinationPath, file)
-                shutil.copy2(os.path.join(folder, subdirectory, file), destinationFilePath)
-                print(f"Copied file from multi-file project to {destinationFilePath}")
-    
-        #source_file_path = os.path.join(folder, subdirectory, "source.cpp")
-
-        # Check if the source file exists in the subdirectory
-        #if os.path.exists(source_file_path):
-            # Copy the source.cpp file to the new folder and rename it
-            #destination_file_path = os.path.join(destination_path, f"{subdirectory}.cpp")
-            #shutil.copy2(source_file_path, destination_file_path)
-            #print(f"Copied '{source_file_path}' to '{destination_file_path}'")
+                destFile = os.path.join(destPath, file)
+                shutil.copy2(os.path.join(subdirPath, file), destFile)
+                count += 1
+                if verbose: print(f"Copied file from multi-file project to '{destFile}'")
 
 if not os.path.exists(basePath):
     print(f"Error: Path '{basePath}' does not exist.")
 
+# Run main script
+os.makedirs(baseDestPath, exist_ok=True)
 checkSubdir(basePath)
 
 # Zip and delete original folder
-shutil.make_archive(defaultDestinationPath, "zip", defaultDestinationPath)
-shutil.rmtree(defaultDestinationPath)
+shutil.make_archive(baseDestPath, "zip", baseDestPath)
+shutil.rmtree(baseDestPath)
 
+print(f"Packaged {count} files to '{baseDestPath}.zip'")
