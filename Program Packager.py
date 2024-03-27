@@ -7,7 +7,7 @@ import sys
 import os
 import shutil
 
-verbose = False
+verbose = True
 count = 0
 
 # Retrieve CLI arguments
@@ -30,7 +30,7 @@ def checkSubdir(folder):
         targetFiles = []
         # Identify the number of .cpp files in the folder (if there are any)
         for file in files:
-            if file.endswith(".cpp"):
+            if file.endswith(".cpp") or file.endswith(".h"):
                 targetFiles.append(file)
                 if verbose: print(f"{file} found in '{subdirPath}'")
         if verbose: print(f"Found {len(files)} files ({len(targetFiles)} .cpp) in '{subdirPath}'")
